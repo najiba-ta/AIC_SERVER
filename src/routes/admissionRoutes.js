@@ -22,3 +22,4 @@ router.get('/me', getMyAdmission);
 router.get('/:id', getAdmissionById);
 
 module.exports = router;
+// ki koro
