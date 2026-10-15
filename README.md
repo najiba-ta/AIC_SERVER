@@ -12,6 +12,9 @@ Robust Express.js and MongoDB REST API backend supporting the Al Hidayah Islamic
   - Full electronic student admission submission with guardian consent.
   - Sequential, unique ID generation (`AIC-STU-XXX`).
   - Administrative review workflow (Approve, Reject with reasons, and Office-Use assignments).
+- **Leadership & Team Management**:
+  - Full CRUD and publishing controls for AIC Leadership, Teachers, and Administration.
+  - Public visibility controls, category filtering, search, and customized sequential display reordering.
 - **Teacher Employment Applications**:
   - Complete multi-step teacher employment application with qualifications, experience, skills, and references.
   - Isolated sequential ID generation (`AIC-TEA-XXX`).
@@ -36,6 +39,8 @@ Robust Express.js and MongoDB REST API backend supporting the Al Hidayah Islamic
 | **Admin Admissions** | `GET /api/admin/admissions`, `PATCH /api/admin/admissions/:id/approve`, `PATCH /api/admin/admissions/:id/reject` | Admin |
 | **Teacher Applications**| `POST /api/teacher-applications`, `GET /api/teacher-applications/my-application` | Authenticated Teacher / Admin |
 | **Admin Teachers** | `GET /api/admin/teacher-applications`, `PATCH /api/admin/teacher-applications/:id/approve`, `PATCH /api/admin/teacher-applications/:id/reject` | Admin |
+| **Team Members** | `GET /api/team-members`, `GET /api/team-members/:id` | Public (Published only) |
+| **Admin Team Members** | `POST /api/team-members`, `PATCH /api/team-members/:id`, `DELETE /api/team-members/:id`, `PATCH /api/team-members/:id/publish`, `PATCH /api/team-members/reorder` | Admin |
 
 ## Tech Stack
 
