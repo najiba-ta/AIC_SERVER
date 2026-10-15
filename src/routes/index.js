@@ -4,6 +4,7 @@ const adminRoutes = require('./adminRoutes');
 const authRoutes = require('./authRoutes');
 const admissionRoutes = require('./admissionRoutes');
 const teacherApplicationRoutes = require('./teacherApplicationRoutes');
+const teamMemberRoutes = require('./teamMemberRoutes');
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.get('/health', (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/admissions', admissionRoutes);
 router.use('/teacher-applications', teacherApplicationRoutes);
+router.use('/team-members', teamMemberRoutes);
 router.use('/stripe', stripeRoutes);
 router.use('/admin', adminRoutes);
 

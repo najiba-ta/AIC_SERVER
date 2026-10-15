@@ -69,5 +69,25 @@ router.post('/teacher-applications/:id/approve', approveTeacherApplication);
 router.patch('/teacher-applications/:id/reject', rejectTeacherApplication);
 router.post('/teacher-applications/:id/reject', rejectTeacherApplication);
 
+// Leadership & Team Member Management
+const {
+  getTeamMembers,
+  getTeamMemberById: getAdminTeamMemberById,
+  createTeamMember,
+  updateTeamMember,
+  publishTeamMember,
+  deleteTeamMember,
+  reorderTeamMembers,
+} = require('../controllers/teamMemberController');
+
+router.get('/team-members', getTeamMembers);
+router.patch('/team-members/reorder', reorderTeamMembers);
+router.get('/team-members/:id', getAdminTeamMemberById);
+router.post('/team-members', createTeamMember);
+router.patch('/team-members/:id/publish', publishTeamMember);
+router.patch('/team-members/:id', updateTeamMember);
+router.put('/team-members/:id', updateTeamMember);
+router.delete('/team-members/:id', deleteTeamMember);
+
 module.exports = router;
 
