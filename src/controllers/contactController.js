@@ -1,4 +1,5 @@
 const ContactMessage = require('../models/ContactMessage');
+const connectDB = require('../config/db');
 const { sendContactEmail, getDestinationEmail } = require('../utils/emailService');
 
 // In-memory rate limiting map: ip -> Array of timestamps
@@ -135,6 +136,9 @@ const submitContactMessage = async (req, res, next) => {
         message: 'Message cannot exceed 5000 characters.',
       });
     }
+
+    // Ensure database connection is ready (serverless resilience)
+    await connectDB();
 
     // 4. Record contact message in MongoDB for persistence and auditability
     const contactRecord = new ContactMessage({
