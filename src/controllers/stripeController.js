@@ -67,9 +67,13 @@ const createCheckoutSession = async (req, res, next) => {
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
+    // Save verified livemode from Stripe session response (never trust client input)
+    const isLiveMode = typeof session.livemode === 'boolean' ? session.livemode : false;
+
     // Create a pending donation record in MongoDB
     await Donation.create({
       stripeSessionId: session.id,
+      livemode: isLiveMode,
       amount: parsedAmount,
       amountInCents,
       currency: 'usd',
@@ -141,6 +145,12 @@ const handleWebhook = async (req, res) => {
         const session = event.data.object;
 
         if (session.payment_status === 'paid') {
+          // Extract verified livemode from Stripe session / event (never trust client)
+          const isLiveMode =
+            typeof session.livemode === 'boolean'
+              ? session.livemode
+              : (typeof event.livemode === 'boolean' ? event.livemode : false);
+
           const donorEmail =
             session.customer_details?.email ||
             session.customer_email ||
@@ -160,6 +170,7 @@ const handleWebhook = async (req, res) => {
               $set: {
                 status: 'completed',
                 paymentStatus: session.payment_status,
+                livemode: isLiveMode,
                 stripePaymentIntentId: session.payment_intent,
                 donorEmail: donorEmail,
                 donorName: donorName,
@@ -177,7 +188,7 @@ const handleWebhook = async (req, res) => {
           );
 
           console.log(
-            `[Webhook] Verified donation recorded: $${updatedDonation.amount} USD from ${updatedDonation.donorName} (${updatedDonation.stripeSessionId})`
+            `[Webhook] Verified donation recorded: $${updatedDonation.amount} USD (${isLiveMode ? 'LIVE' : 'TEST'}) from ${updatedDonation.donorName} (${updatedDonation.stripeSessionId})`
           );
         }
         break;
@@ -185,16 +196,22 @@ const handleWebhook = async (req, res) => {
 
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object;
+        const isLiveMode =
+          typeof paymentIntent.livemode === 'boolean'
+            ? paymentIntent.livemode
+            : (typeof event.livemode === 'boolean' ? event.livemode : false);
+
         await Donation.findOneAndUpdate(
           { stripePaymentIntentId: paymentIntent.id },
           {
             $set: {
               status: 'failed',
               paymentStatus: 'failed',
+              livemode: isLiveMode,
             },
           }
         );
-        console.warn(`[Webhook] PaymentIntent failed: ${paymentIntent.id}`);
+        console.warn(`[Webhook] PaymentIntent failed: ${paymentIntent.id} (${isLiveMode ? 'LIVE' : 'TEST'})`);
         break;
       }
 

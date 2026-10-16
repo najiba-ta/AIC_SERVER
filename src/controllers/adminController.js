@@ -23,6 +23,20 @@ const getDonations = async (req, res, next) => {
       filter.status = statusFilter;
     }
 
+    // Mode filter: 'live' (default for verified donations), 'test', or 'all'
+    const modeParam = req.query.mode
+      ? String(req.query.mode).toLowerCase()
+      : (req.query.livemode !== undefined ? (req.query.livemode === 'true' ? 'live' : 'test') : 'live');
+
+    if (modeParam === 'test') {
+      filter.livemode = false;
+    } else if (modeParam === 'all') {
+      // Do not filter by livemode when explicitly requesting all records
+    } else {
+      // Default: Only return verified Live Mode donations
+      filter.livemode = true;
+    }
+
     if (searchQuery) {
       filter.$or = [
         { donorName: { $regex: searchQuery, $options: 'i' } },
@@ -41,18 +55,18 @@ const getDonations = async (req, res, next) => {
         .limit(limit)
         .lean(),
       Donation.countDocuments(filter),
-      Donation.find({ status: 'completed' })
+      Donation.find({ status: 'completed', livemode: true })
         .sort({ paidAt: -1, createdAt: -1 })
         .limit(5)
         .lean(),
     ]);
 
-    // Calculate overall verified totals and metrics using MongoDB Aggregation
+    // Calculate overall verified totals and metrics using MongoDB Aggregation (strictly livemode: true)
     const statsResult = await Donation.aggregate([
       {
         $facet: {
           completedStats: [
-            { $match: { status: 'completed' } },
+            { $match: { status: 'completed', livemode: true } },
             {
               $group: {
                 _id: null,
@@ -63,10 +77,21 @@ const getDonations = async (req, res, next) => {
             },
           ],
           allStatusCounts: [
+            { $match: { livemode: true } },
             {
               $group: {
                 _id: '$status',
                 count: { $sum: 1 },
+              },
+            },
+          ],
+          testStats: [
+            { $match: { status: 'completed', livemode: false } },
+            {
+              $group: {
+                _id: null,
+                totalAmount: { $sum: '$amount' },
+                totalCount: { $sum: 1 },
               },
             },
           ],
@@ -78,6 +103,11 @@ const getDonations = async (req, res, next) => {
       totalAmount: 0,
       totalCount: 0,
       avgAmount: 0,
+    };
+
+    const test = statsResult[0]?.testStats[0] || {
+      totalAmount: 0,
+      totalCount: 0,
     };
 
     const statusCounts = (statsResult[0]?.allStatusCounts || []).reduce((acc, curr) => {
@@ -92,6 +122,8 @@ const getDonations = async (req, res, next) => {
       averageDonation: Number((completed.avgAmount || 0).toFixed(2)),
       pendingDonations: statusCounts.pending || 0,
       failedDonations: statusCounts.failed || 0,
+      testDonationsCount: test.totalCount || 0,
+      testDonationsAmount: Number((test.totalAmount || 0).toFixed(2)),
     };
 
     return res.status(200).json({
@@ -124,6 +156,9 @@ const getAdminStats = async (req, res, next) => {
     const [donationAgg, userAgg, recentDonations] = await Promise.all([
       Donation.aggregate([
         {
+          $match: { livemode: true },
+        },
+        {
           $group: {
             _id: '$status',
             totalAmount: { $sum: '$amount' },
@@ -139,7 +174,7 @@ const getAdminStats = async (req, res, next) => {
           },
         },
       ]),
-      Donation.find({ status: 'completed' })
+      Donation.find({ status: 'completed', livemode: true })
         .sort({ paidAt: -1, createdAt: -1 })
         .limit(5)
         .lean(),

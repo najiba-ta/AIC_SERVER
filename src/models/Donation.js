@@ -14,6 +14,11 @@ const donationSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    livemode: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     amount: {
       type: Number,
       required: [true, 'Donation amount in USD is required'],
@@ -78,8 +83,10 @@ const donationSchema = new mongoose.Schema(
   }
 );
 
-// Helpful index for sorting donations and calculating aggregates
+// Helpful indexes for sorting donations and calculating live aggregates
 donationSchema.index({ status: 1, createdAt: -1 });
+donationSchema.index({ status: 1, livemode: 1, createdAt: -1 });
+donationSchema.index({ livemode: 1, createdAt: -1 });
 
 const Donation = mongoose.model('Donation', donationSchema);
 
