@@ -5,6 +5,7 @@ const authRoutes = require('./authRoutes');
 const admissionRoutes = require('./admissionRoutes');
 const teacherApplicationRoutes = require('./teacherApplicationRoutes');
 const teamMemberRoutes = require('./teamMemberRoutes');
+const contactRoutes = require('./contactRoutes');
 
 const router = express.Router();
 
@@ -22,6 +23,7 @@ router.use('/auth', authRoutes);
 router.use('/admissions', admissionRoutes);
 router.use('/teacher-applications', teacherApplicationRoutes);
 router.use('/team-members', teamMemberRoutes);
+router.use('/contact', contactRoutes);
 router.use('/stripe', stripeRoutes);
 router.use('/admin', adminRoutes);
 

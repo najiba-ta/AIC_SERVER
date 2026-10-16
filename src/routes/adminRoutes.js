@@ -110,5 +110,14 @@ router.post('/team-members/:id', updateTeamMember);
 // Member Deletion
 router.delete('/team-members/:id', deleteTeamMember);
 
+// Contact Inquiries & Form Audit Logs
+const {
+  getContactMessages,
+  getContactMessageById,
+} = require('../controllers/contactController');
+
+router.get('/contact-messages', getContactMessages);
+router.get('/contact-messages/:id', getContactMessageById);
+
 module.exports = router;
 
