@@ -249,6 +249,12 @@ const createTeamMember = async (req, res, next) => {
       isPublished,
     } = req.body;
 
+    // If an existing ID is passed with isPublished (e.g. client publishing via collection POST), delegate to publishTeamMember
+    const targetId = req.body.id || req.body._id;
+    if (targetId && !fullName && req.body.isPublished !== undefined) {
+      return publishTeamMember(req, res, next);
+    }
+
     // Validate Required Fields
     if (!fullName || !String(fullName).trim()) {
       return res.status(400).json({
@@ -321,6 +327,7 @@ const createTeamMember = async (req, res, next) => {
       success: true,
       message: 'Team member created successfully.',
       teamMember: newMember,
+      data: newMember,
     });
   } catch (error) {
     console.error('[CreateTeamMember Error]:', error);
@@ -441,6 +448,7 @@ const updateTeamMember = async (req, res, next) => {
       success: true,
       message: 'Team member updated successfully.',
       teamMember: member,
+      data: member,
     });
   } catch (error) {
     console.error('[UpdateTeamMember Error]:', error);
@@ -455,9 +463,9 @@ const updateTeamMember = async (req, res, next) => {
  */
 const publishTeamMember = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id || req.body.id || req.body._id;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid team member ID format.',
@@ -492,6 +500,7 @@ const publishTeamMember = async (req, res, next) => {
       message: `Team member ${actionText} successfully.`,
       isPublished: member.isPublished,
       teamMember: member,
+      data: member,
     });
   } catch (error) {
     console.error('[PublishTeamMember Error]:', error);

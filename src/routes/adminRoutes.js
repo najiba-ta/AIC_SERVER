@@ -80,13 +80,34 @@ const {
   reorderTeamMembers,
 } = require('../controllers/teamMemberController');
 
+// Listing & Creation (Collection routes)
 router.get('/team-members', getTeamMembers);
-router.patch('/team-members/reorder', reorderTeamMembers);
-router.get('/team-members/:id', getAdminTeamMemberById);
 router.post('/team-members', createTeamMember);
+
+// Reordering endpoints (Support PATCH, POST, PUT before /:id)
+router.patch('/team-members/reorder', reorderTeamMembers);
+router.post('/team-members/reorder', reorderTeamMembers);
+router.put('/team-members/reorder', reorderTeamMembers);
+
+// Bulk/Body-based publish endpoints (before /:id)
+router.patch('/team-members/publish', publishTeamMember);
+router.post('/team-members/publish', publishTeamMember);
+router.put('/team-members/publish', publishTeamMember);
+
+// Member-specific publish endpoints (Support PATCH, POST, PUT)
 router.patch('/team-members/:id/publish', publishTeamMember);
+router.post('/team-members/:id/publish', publishTeamMember);
+router.put('/team-members/:id/publish', publishTeamMember);
+
+// Single Member Retrieval
+router.get('/team-members/:id', getAdminTeamMemberById);
+
+// Member Updates (Support PATCH, PUT, POST)
 router.patch('/team-members/:id', updateTeamMember);
 router.put('/team-members/:id', updateTeamMember);
+router.post('/team-members/:id', updateTeamMember);
+
+// Member Deletion
 router.delete('/team-members/:id', deleteTeamMember);
 
 module.exports = router;

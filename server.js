@@ -107,6 +107,12 @@ app.get('/', (req, res) => {
       teamMemberDelete: 'DELETE /api/team-members/:id',
       teamMemberPublish: 'PATCH /api/team-members/:id/publish',
       teamMemberReorder: 'PATCH /api/team-members/reorder',
+      adminTeamMembersList: 'GET /api/admin/team-members',
+      adminTeamMemberCreate: 'POST /api/admin/team-members',
+      adminTeamMemberUpdate: 'PATCH /api/admin/team-members/:id',
+      adminTeamMemberDelete: 'DELETE /api/admin/team-members/:id',
+      adminTeamMemberPublish: 'PATCH /api/admin/team-members/:id/publish',
+      adminTeamMemberReorder: 'PATCH /api/admin/team-members/reorder',
       stripeCheckout: 'POST /api/stripe/checkout',
       stripeWebhook: 'POST /api/stripe/webhook',
     },
@@ -115,6 +121,8 @@ app.get('/', (req, res) => {
 
 // Mount Main API Routes
 app.use('/api', apiRoutes);
+// Direct alias mounting ensures resilience if a client requests /admin/... without the /api prefix
+app.use(apiRoutes);
 
 // 404 and Global Error Middleware
 app.use(notFoundHandler);

@@ -18,6 +18,7 @@ async function runTests() {
 
   try {
     await connectDB();
+    await TeamMember.deleteMany({ fullName: { $regex: /Test|Sheikh Abdullah|Ustadh Tariq|Sister Maryam|Admin Gateway/i } });
 
     // Start server on an ephemeral port
     server = await new Promise((resolve) => {
@@ -392,11 +393,12 @@ async function runTests() {
     if (reorderRes.status === 200 && reorderRes.body.success === true) {
       // Fetch sorted list
       const sortedList = await apiRequest('/api/team-members');
-      const firstMember = sortedList.body.teamMembers[0];
-      if (firstMember._id === member2Res.body.teamMember._id) {
+      const firstIdx = sortedList.body.teamMembers.findIndex((m) => m._id === member2Res.body.teamMember._id);
+      const secondIdx = sortedList.body.teamMembers.findIndex((m) => m._id === publishedMemberId);
+      if (firstIdx !== -1 && secondIdx !== -1 && firstIdx < secondIdx) {
         console.log('✓ 9. Display ordering passed: Reordering endpoint correctly adjusted sorting order (displayOrder 5 precedes 10).');
       } else {
-        throw new Error('Sorting order was not reflected after reorder');
+        throw new Error(`Sorting order was not reflected after reorder (firstIdx: ${firstIdx}, secondIdx: ${secondIdx})`);
       }
     } else {
       throw new Error(`Expected 200 for reorder, got ${reorderRes.status}`);
@@ -424,17 +426,86 @@ async function runTests() {
     }
 
     // -------------------------------------------------------------------------
-    // TEST 11: Alias Endpoints under /api/admin/team-members
+    // TEST 11: Alias Endpoints & Method Compatibility under /api/admin/team-members
     // -------------------------------------------------------------------------
+    // 11a. Admin GET /api/admin/team-members
     const adminAliasList = await apiRequest('/api/admin/team-members', {
       headers: { 'x-admin-key': adminKey },
     });
-
-    if (adminAliasList.status === 200 && Array.isArray(adminAliasList.body.teamMembers)) {
-      console.log('✓ 11. Admin alias routing passed: /api/admin/team-members successfully accessible via admin gateway.');
-    } else {
+    if (adminAliasList.status !== 200 || !Array.isArray(adminAliasList.body.teamMembers)) {
       throw new Error(`Expected 200 for admin alias list, got ${adminAliasList.status}`);
     }
+    console.log('✓ 11a. Admin alias routing passed: GET /api/admin/team-members successfully accessible via admin gateway.');
+
+    // 11b. Admin POST /api/admin/team-members (Creation via admin gateway)
+    const adminCreateRes = await apiRequest('/api/admin/team-members', {
+      method: 'POST',
+      headers: { 'x-admin-key': adminKey },
+      body: {
+        fullName: 'Admin Gateway Member',
+        designation: 'Academic Dean',
+        category: 'Leadership',
+        isPublished: false,
+      },
+    });
+    if (adminCreateRes.status !== 201 || !adminCreateRes.body.teamMember?._id) {
+      throw new Error(`Expected 201 for POST /api/admin/team-members, got ${adminCreateRes.status}`);
+    }
+    const adminCreatedId = adminCreateRes.body.teamMember._id;
+    createdMemberIds.push(adminCreatedId);
+    console.log('✓ 11b. Admin creation passed: POST /api/admin/team-members created record successfully.');
+
+    // 11c. Admin POST /api/admin/team-members/:id/publish (POST method on publish route)
+    const postPublishRes = await apiRequest(`/api/admin/team-members/${adminCreatedId}/publish`, {
+      method: 'POST',
+      headers: { 'x-admin-key': adminKey },
+      body: { isPublished: true },
+    });
+    if (postPublishRes.status !== 200 || postPublishRes.body.isPublished !== true) {
+      throw new Error(`Expected 200 for POST /api/admin/team-members/:id/publish, got ${postPublishRes.status}`);
+    }
+    console.log('✓ 11c. Method compatibility passed: POST /api/admin/team-members/:id/publish published member.');
+
+    // 11d. Admin POST /api/admin/team-members with { id, isPublished } (Delegation to publish)
+    const collectionPublishRes = await apiRequest('/api/admin/team-members', {
+      method: 'POST',
+      headers: { 'x-admin-key': adminKey },
+      body: { id: adminCreatedId, isPublished: false },
+    });
+    if (collectionPublishRes.status !== 200 || collectionPublishRes.body.isPublished !== false) {
+      throw new Error(`Expected 200 for POST /api/admin/team-members delegation, got ${collectionPublishRes.status}`);
+    }
+    console.log('✓ 11d. Collection delegation passed: POST /api/admin/team-members with {id, isPublished} unpublished member.');
+
+    // 11e. Admin POST /api/admin/team-members/reorder
+    const postReorderRes = await apiRequest('/api/admin/team-members/reorder', {
+      method: 'POST',
+      headers: { 'x-admin-key': adminKey },
+      body: { orders: [{ id: adminCreatedId, displayOrder: 99 }] },
+    });
+    if (postReorderRes.status !== 200 || postReorderRes.body.success !== true) {
+      throw new Error(`Expected 200 for POST /api/admin/team-members/reorder, got ${postReorderRes.status}`);
+    }
+    console.log('✓ 11e. Method compatibility passed: POST /api/admin/team-members/reorder succeeded.');
+
+    // 11f. Direct route without /api prefix (Fallback resilience)
+    const directRouteRes = await apiRequest(`/admin/team-members/${adminCreatedId}`, {
+      headers: { 'x-admin-key': adminKey },
+    });
+    if (directRouteRes.status !== 200 || !directRouteRes.body.teamMember) {
+      throw new Error(`Expected 200 for fallback /admin/team-members/:id, got ${directRouteRes.status}`);
+    }
+    console.log('✓ 11f. Prefix resilience passed: Direct /admin/team-members/:id resolved with 200.');
+
+    // 11g. Cleanup the admin gateway member
+    const cleanupAdminMember = await apiRequest(`/api/admin/team-members/${adminCreatedId}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-key': adminKey },
+    });
+    if (cleanupAdminMember.status !== 200) {
+      throw new Error(`Expected 200 for DELETE /api/admin/team-members/:id, got ${cleanupAdminMember.status}`);
+    }
+    console.log('✓ 11g. Admin deletion passed: DELETE /api/admin/team-members/:id removed record.');
 
     // -------------------------------------------------------------------------
     // CLEANUP
