@@ -75,12 +75,13 @@ const submitContactMessage = async (req, res, next) => {
       });
     }
 
-    // 3. Input Validation
+    // 3. Input Validation - ONLY name and message are required
     const trimmedName = typeof name === 'string' ? name.trim() : '';
     const trimmedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
-    const trimmedSubject = typeof subject === 'string' ? subject.trim() : '';
+    let trimmedSubject = typeof subject === 'string' ? subject.trim() : '';
     const trimmedMessage = typeof message === 'string' ? message.trim() : '';
 
+    // Validate Required Name
     if (!trimmedName || trimmedName.length < 2) {
       return res.status(400).json({
         success: false,
@@ -95,34 +96,7 @@ const submitContactMessage = async (req, res, next) => {
       });
     }
 
-    if (!trimmedEmail || !EMAIL_REGEX.test(trimmedEmail)) {
-      return res.status(400).json({
-        success: false,
-        message: 'A valid email address is required.',
-      });
-    }
-
-    if (trimmedEmail.length > 150) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email address cannot exceed 150 characters.',
-      });
-    }
-
-    if (!trimmedSubject || trimmedSubject.length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'Subject is required (at least 2 characters).',
-      });
-    }
-
-    if (trimmedSubject.length > 200) {
-      return res.status(400).json({
-        success: false,
-        message: 'Subject cannot exceed 200 characters.',
-      });
-    }
-
+    // Validate Required Message
     if (!trimmedMessage || trimmedMessage.length < 5) {
       return res.status(400).json({
         success: false,
@@ -135,6 +109,35 @@ const submitContactMessage = async (req, res, next) => {
         success: false,
         message: 'Message cannot exceed 5000 characters.',
       });
+    }
+
+    // Optional Email Validation (only validate if visitor provided an email address)
+    if (trimmedEmail) {
+      if (!EMAIL_REGEX.test(trimmedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid email address, or leave it blank.',
+        });
+      }
+
+      if (trimmedEmail.length > 150) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email address cannot exceed 150 characters.',
+        });
+      }
+    }
+
+    // Optional Subject Validation (fallback to sensible default if omitted)
+    if (trimmedSubject) {
+      if (trimmedSubject.length > 200) {
+        return res.status(400).json({
+          success: false,
+          message: 'Subject cannot exceed 200 characters.',
+        });
+      }
+    } else {
+      trimmedSubject = `Website Contact Message from ${trimmedName}`;
     }
 
     // Ensure database connection is ready (serverless resilience)

@@ -10,20 +10,24 @@ const contactMessageSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: [true, 'Sender email address is required'],
+      required: false,
       trim: true,
       lowercase: true,
       maxlength: [150, 'Email address cannot exceed 150 characters'],
-      match: [
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        'Please provide a valid email address',
-      ],
+      validate: {
+        validator: function (v) {
+          // Optional: only validate format if a value is supplied
+          return !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+        },
+        message: 'Please provide a valid email address',
+      },
     },
     subject: {
       type: String,
-      required: [true, 'Subject is required'],
+      required: false,
       trim: true,
       maxlength: [200, 'Subject cannot exceed 200 characters'],
+      default: 'Website Contact Message',
     },
     message: {
       type: String,

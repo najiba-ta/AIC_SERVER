@@ -74,6 +74,13 @@ const createEmailTransporter = () => {
  */
 const buildContactHtml = ({ name, email, subject, message, timestamp }) => {
   const formattedDate = new Date(timestamp || Date.now()).toUTCString();
+  const emailDisplay = email
+    ? `<a href="mailto:${escapeHtml(email)}" style="color: #0284c7; text-decoration: none;">${escapeHtml(email)}</a>`
+    : '<span style="color: #94a3b8; font-style: italic;">Not provided</span>';
+
+  const footerReplyNotice = email
+    ? `You can reply directly to this email to respond to <strong>${escapeHtml(name)}</strong> (${escapeHtml(email)}).`
+    : `The visitor submitted this message with only their name and message (no email provided).`;
 
   return `
 <!DOCTYPE html>
@@ -89,10 +96,6 @@ const buildContactHtml = ({ name, email, subject, message, timestamp }) => {
     .header p { margin: 6px 0 0 0; font-size: 13px; color: #94a3b8; }
     .content { padding: 28px; }
     .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 24px; }
-    .meta-row { display: flex; margin-bottom: 8px; font-size: 14px; }
-    .meta-row:last-child { margin-bottom: 0; }
-    .meta-label { font-weight: 600; width: 100px; color: #64748b; }
-    .meta-value { color: #0f172a; flex: 1; word-break: break-word; }
     .message-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: #0f172a; }
     .message-body { background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #0284c7; padding: 16px; border-radius: 4px; font-size: 14px; line-height: 1.6; color: #334155; white-space: pre-wrap; word-break: break-word; }
     .footer { background: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
@@ -109,15 +112,15 @@ const buildContactHtml = ({ name, email, subject, message, timestamp }) => {
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
             <td style="padding: 4px 0; font-weight: 600; color: #64748b; width: 110px;">From:</td>
-            <td style="padding: 4px 0; color: #0f172a;">${escapeHtml(name)}</td>
+            <td style="padding: 4px 0; color: #0f172a; font-weight: 600;">${escapeHtml(name)}</td>
           </tr>
           <tr>
             <td style="padding: 4px 0; font-weight: 600; color: #64748b;">Email:</td>
-            <td style="padding: 4px 0; color: #0f172a;"><a href="mailto:${escapeHtml(email)}" style="color: #0284c7; text-decoration: none;">${escapeHtml(email)}</a></td>
+            <td style="padding: 4px 0; color: #0f172a;">${emailDisplay}</td>
           </tr>
           <tr>
             <td style="padding: 4px 0; font-weight: 600; color: #64748b;">Subject:</td>
-            <td style="padding: 4px 0; color: #0f172a; font-weight: 600;">${escapeHtml(subject)}</td>
+            <td style="padding: 4px 0; color: #0f172a; font-weight: 600;">${escapeHtml(subject || 'Website Contact Message')}</td>
           </tr>
           <tr>
             <td style="padding: 4px 0; font-weight: 600; color: #64748b;">Submitted:</td>
@@ -130,7 +133,7 @@ const buildContactHtml = ({ name, email, subject, message, timestamp }) => {
       <div class="message-body">${escapeHtml(message)}</div>
     </div>
     <div class="footer">
-      <p style="margin: 0;">You can reply directly to this email to respond to <strong>${escapeHtml(name)}</strong> (${escapeHtml(email)}).</p>
+      <p style="margin: 0;">${footerReplyNotice}</p>
       <p style="margin: 4px 0 0 0;">Al Hidayah Islamic Center &bull; Automated Contact Dispatcher</p>
     </div>
   </div>
@@ -144,6 +147,9 @@ const buildContactHtml = ({ name, email, subject, message, timestamp }) => {
  */
 const buildContactText = ({ name, email, subject, message, timestamp }) => {
   const formattedDate = new Date(timestamp || Date.now()).toUTCString();
+  const replyNotice = email
+    ? `Note: Replying to this email will directly respond to ${email}.`
+    : `Note: Visitor submitted this message without an email address.`;
 
   return `
 ==================================================
@@ -151,8 +157,8 @@ AL HIDAYAH ISLAMIC CENTER - NEW CONTACT INQUIRY
 ==================================================
 
 From:      ${name}
-Email:     ${email}
-Subject:   ${subject}
+Email:     ${email || 'Not provided'}
+Subject:   ${subject || 'Website Contact Message'}
 Submitted: ${formattedDate}
 
 --------------------------------------------------
@@ -161,7 +167,7 @@ MESSAGE:
 ${message}
 
 --------------------------------------------------
-Note: Replying to this email will directly respond to ${email}.
+${replyNotice}
 `.trim();
 };
 
@@ -183,8 +189,8 @@ const escapeHtml = (text) => {
  *
  * @param {Object} options
  * @param {string} options.name
- * @param {string} options.email
- * @param {string} options.subject
+ * @param {string} [options.email]
+ * @param {string} [options.subject]
  * @param {string} options.message
  * @param {Date|number} [options.timestamp]
  * @returns {Promise<{ success: boolean, messageId: string }>}
@@ -209,11 +215,13 @@ const sendContactEmail = async ({ name, email, subject, message, timestamp = new
     process.env.EMAIL_FROM ||
     `"Al Hidayah Islamic Center" <${senderUser}>`;
 
+  const finalSubject = subject ? `[AIC Contact] ${subject} - from ${name}` : `[AIC Contact] New Message from ${name}`;
+
   const mailOptions = {
     from: senderAddress,
     to: destinationEmail,
-    replyTo: `"${name.replace(/"/g, '')}" <${email}>`,
-    subject: `[AIC Contact] ${subject} - from ${name}`,
+    ...(email ? { replyTo: `"${name.replace(/"/g, '')}" <${email}>` } : {}),
+    subject: finalSubject,
     text: buildContactText({ name, email, subject, message, timestamp }),
     html: buildContactHtml({ name, email, subject, message, timestamp }),
   };

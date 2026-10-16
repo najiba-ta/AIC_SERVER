@@ -81,8 +81,6 @@ async function runTests() {
       method: 'POST',
       body: {
         name: 'A',
-        email: 'visitor@example.com',
-        subject: 'Inquiry',
         message: 'Hello there center',
       },
     });
@@ -92,51 +90,61 @@ async function runTests() {
       throw new Error(`Expected 400 for short name, got ${shortNameRes.status}`);
     }
 
-    // 2c. Invalid email format
+    // 2c. Missing message
+    const missingMsgRes = await apiRequest('/api/contact', {
+      method: 'POST',
+      body: {
+        name: 'Brother Ali',
+      },
+    });
+    if (missingMsgRes.status === 400 && missingMsgRes.body.message.includes('Message is required')) {
+      console.log('✓ 2c. Validation passed: Missing message rejected with 400.');
+    } else {
+      throw new Error(`Expected 400 for missing message, got ${missingMsgRes.status}`);
+    }
+
+    // 2d. Short message
+    const shortMsgRes = await apiRequest('/api/contact', {
+      method: 'POST',
+      body: {
+        name: 'Brother Ali',
+        message: 'Hi',
+      },
+    });
+    if (shortMsgRes.status === 400 && shortMsgRes.body.message.includes('Message is required')) {
+      console.log('✓ 2d. Validation passed: Short message (< 5 chars) rejected with 400.');
+    } else {
+      throw new Error(`Expected 400 for short message, got ${shortMsgRes.status}`);
+    }
+
+    // 2e. Invalid email format (when email IS provided, it must be valid)
     const invalidEmailRes = await apiRequest('/api/contact', {
       method: 'POST',
       body: {
         name: 'Brother Ali',
         email: 'not-an-email',
-        subject: 'Inquiry',
         message: 'Hello there center',
       },
     });
     if (invalidEmailRes.status === 400 && invalidEmailRes.body.message.includes('valid email')) {
-      console.log('✓ 2c. Validation passed: Invalid email rejected with 400.');
+      console.log('✓ 2e. Validation passed: Invalid email format (when provided) rejected with 400.');
     } else {
       throw new Error(`Expected 400 for invalid email, got ${invalidEmailRes.status}`);
     }
 
-    // 2d. Missing subject
-    const missingSubjectRes = await apiRequest('/api/contact', {
+    // 2f. Submission with ONLY name and message (NO email, NO subject) - MUST SUCCEED!
+    const nameAndMessageOnlyRes = await apiRequest('/api/contact', {
       method: 'POST',
       body: {
-        name: 'Brother Ali',
-        email: 'ali@example.com',
-        message: 'Hello there center',
+        name: 'Sister Aisha',
+        message: 'Assalamu Alaikum. Could you please share the prayer schedule for Eid?',
       },
     });
-    if (missingSubjectRes.status === 400 && missingSubjectRes.body.message.includes('Subject is required')) {
-      console.log('✓ 2d. Validation passed: Missing subject rejected with 400.');
+    if (nameAndMessageOnlyRes.status === 200 && nameAndMessageOnlyRes.body.success === true) {
+      console.log('✓ 2f. Exact requirement verified: Submission with ONLY name and message succeeded with 200 OK.');
+      if (nameAndMessageOnlyRes.body.data?.id) createdMessageIds.push(nameAndMessageOnlyRes.body.data.id);
     } else {
-      throw new Error(`Expected 400 for missing subject, got ${missingSubjectRes.status}`);
-    }
-
-    // 2e. Short message
-    const shortMsgRes = await apiRequest('/api/contact', {
-      method: 'POST',
-      body: {
-        name: 'Brother Ali',
-        email: 'ali@example.com',
-        subject: 'Inquiry',
-        message: 'Hi',
-      },
-    });
-    if (shortMsgRes.status === 400 && shortMsgRes.body.message.includes('Message is required')) {
-      console.log('✓ 2e. Validation passed: Short message (< 5 chars) rejected with 400.');
-    } else {
-      throw new Error(`Expected 400 for short message, got ${shortMsgRes.status}`);
+      throw new Error(`Expected 200 for name-and-message-only submission, got ${nameAndMessageOnlyRes.status}`);
     }
 
     // -------------------------------------------------------------------------
